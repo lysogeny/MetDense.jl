@@ -12,6 +12,11 @@ struct GenomicPosition
     pos :: Int32
 end
 
+struct EOFMarker
+end
+
+GenomicPositionOrEOF = Union{GenomicPosition,EOFMarker}
+
 function Base.isless( gp1 ::GenomicPosition, gp2 ::GenomicPosition )
     if gp1.chrom == gp2.chrom
         gp1.pos < gp2.pos
@@ -20,12 +25,18 @@ function Base.isless( gp1 ::GenomicPosition, gp2 ::GenomicPosition )
     end
 end
 
+Base.isless( gp1 ::EOFMarker, gp2 ::GenomicPositionOrEOF ) = false
+Base.isless( gp1 ::GenomicPosition, gp2 ::EOFMarker ) = true
+
 struct MethRecord
-    gpos :: GenomicPosition
+    gpos :: GenomicPositionOrEOF
     call :: MethCall   # for now
 end
 
 function line_to_methrec( line )
+    if line == ""
+        return MethRecord( EOFMarker(), nocall )
+    end
     fields = split( line, "\t" )
     gp = GenomicPosition( fields[1], parse( Int32, fields[2] ) )
     count_meth = parse( Int, fields[3] )
@@ -70,24 +81,36 @@ function write_cells_block( fout, cellnames )
     end    
 end
 
+function handle_input_eof( inchannel:: Channel{MethRecord} ) ::Channel{MethRecord}
+    f = function( ch::Channel )
+        while isready( inch )
+            put!( ch, take!(inchannel) )
+        end
+        put!( ch, MethRecord( GenomicPosition( nothing, 0 ), nocall ) )
+    end
+    Channel( f )
+end
+
 function write_data_block( fout, indata, tmp_filename )
     chrom_sentinel = "___none___just_starting___"
     word = UInt32(0)
     bitpos = 0
-    current_recs = take!.( indata )
+    current_recs :: Union{ Array{MethRecord}, Nothing } = take!.( indata )
     prev_chrom = chrom_sentinel
     fouttmp = open( tmp_filename, "w" )
     chroms = []
-    for ii in 1:2000000
+    while true
 
         # Get current position and write it out to temp file
         current_gpos = minimum( mr.gpos for mr in current_recs )
-        # print( "\n$(current_gpos.chrom):$(current_gpos.pos) -- $(position(fout)) " )
 
-        # Are we starting a new chrosome?
-        if current_gpos.chrom != prev_chrom
+        # Are we starting a new chromosome?
+        if current_gpos == EOFMarker() || current_gpos.chrom != prev_chrom
             if prev_chrom != "___none___just_starting___"
                 print( "Chromosome '$(prev_chrom)' processed.\n" )
+            end
+            if current_gpos == EOFMarker()
+                break
             end
             push!( chroms, ( name = current_gpos.chrom, filepos = position(fouttmp) ) )
             prev_chrom = current_gpos.chrom
@@ -108,6 +131,9 @@ function write_data_block( fout, indata, tmp_filename )
             else
                 call = current_recs[i].call
                 current_recs[i] = take!( indata[i] )
+                if current_recs[i].gpos == EOFMarker()
+                    print( "Finished with cell  $i.\n")
+                end
             end
 
             # Add call to word
@@ -123,7 +149,6 @@ function write_data_block( fout, indata, tmp_filename )
 
         end
     end    
-    print( "Chromosome '$(prev_chrom)' processed.\n" )
     close( fouttmp )
     chroms
 end
@@ -179,8 +204,9 @@ function make_metdense_file( outfilename, inputs, cellnames )
 end
 
 function main()
-    methcalls_dir = "/home/anders/w/metdense/gastrulation/raw_data"
-    methcalls_filenames = readdir( methcalls_dir )[1:10]
+    #methcalls_dir = "/home/anders/w/metdense/gastrulation/raw_data"
+    methcalls_dir = "/home/anders/w/metdense/testshort/"
+    methcalls_filenames = readdir( methcalls_dir ) #[1:10]
     cellnames = replace.( methcalls_filenames, ".tsv.gz"=>"")
 
     fins = GZip.open.( methcalls_dir * "/" .* methcalls_filenames )
