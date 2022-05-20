@@ -99,6 +99,7 @@ function write_data_block( fout, indata, tmp_filename )
     prev_chrom = chrom_none_yet
     fouttmp = open( tmp_filename, "w" )
     chroms = []
+    numdots = 0
     while true
 
         # Get current position and write it out to temp file
@@ -116,9 +117,16 @@ function write_data_block( fout, indata, tmp_filename )
                 word  = UInt32(0)
                 bitpos = 0
             end
-            print( "Processing chromosome $(current_gpos.chrom)\n")
+            print( "\nProcessing chromosome $( rpad( current_gpos.chrom, 3) ) ")
             push!( chroms, ( name = current_gpos.chrom, filepos = position(fouttmp) ) )
             prev_chrom = current_gpos.chrom
+            numdots = 0
+        end
+
+        if current_gpos.pos ÷ 10000000 > numdots
+            newdots = current_gpos.pos ÷ 10000000 - numdots
+            print( "." ^ newdots )
+            numdots += newdots
         end
 
         # Get current position and write out current position to temp file
@@ -158,6 +166,7 @@ function write_data_block( fout, indata, tmp_filename )
         end
     end    
     close( fouttmp )
+    print( "\n" )
     chroms
 end
 
