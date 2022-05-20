@@ -32,7 +32,7 @@ However, after its end, the block is padded with zeroes, such that the next bloc
 
 This block contains the actual methylation calls as dense, packed matrix. The matrix has one row for each CpG position in the genome (CpG positions not covered by any cell may be omitted) and one column in for each cell. 
 
-It is arranged in row-major form, i.e. consecutive bytes correspond to data for the same position but different cells. Each CpG position ("position" in the following) is represented by a "row", which is an array of `4*ceil(ncells/8)` consecutive bytes, where each byte holds information for 4 cells, as follows: 
+It is arranged in row-major form, i.e. consecutive bytes correspond to data for the same position but different cells. Each CpG position ("position" in the following) is represented by a "row", which is an array of `4*ceil(ncells/16)` consecutive bytes, where each byte holds information for 4 cells, as follows: 
   - The bit pattern 00 means that the position was not covered in the cell.
   - The bit pattern 01 means that the cell *unmethylated* at the position.
   - The bit pattern 10 means that the cell *methylated* at the position.
@@ -42,8 +42,14 @@ The number of bytes per row is chosen such that the total length of the row is d
 
 Therefore, if the row for a given CpG position stars at file position `offset` and we
 wish to get bit pattern for cell `i`, we need to read in the byte as file position 
-   `offset + ( i // 2)` 
-(where `//` denotes integer division), and then look at this byte `b` with `b & 0x0f` if `i` is even or with `b & 0xf0` if `i` is odd.
+
+   `offset + ( i // 4 )` 
+
+(where `//` denotes integer division), and then look at this byte `b` with 
+
+   `( b >> ( (i%4)*2 ) ) & 0x03`, 
+
+where `>>` denotes bitwise right shift, `%` denotes modulo (i.e., remainder of the division), and `&` means bitwise and.
 
 For efficiency reasons, it may be better to read four bytes (one uint32) per file access. Then, all the data for a given position can be accessed with a loop like this:
 
