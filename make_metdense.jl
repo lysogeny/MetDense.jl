@@ -106,13 +106,17 @@ function write_data_block( fout, indata, tmp_filename )
 
         # Are we starting a new chromosome?
         if current_gpos == EOFMarker() || current_gpos.chrom != prev_chrom
-            if prev_chrom != chrom_none_yet
-                print( "Chromosome '$(prev_chrom)' processed.\n" )
-            end
             if current_gpos == EOFMarker()
                 break
             end
             @assert prev_chrom < current_gpos.chrom || prev_chrom == chrom_none_yet 
+            if bitpos > 0
+                # We have an unfinished word left over from the previous chromosome
+                write( fout, UInt32(word) )
+                word  = UInt32(0)
+                bitpos = 0
+            end
+            print( "Processing chromosome $(current_gpos.chrom)\n")
             push!( chroms, ( name = current_gpos.chrom, filepos = position(fouttmp) ) )
             prev_chrom = current_gpos.chrom
         end
