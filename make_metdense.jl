@@ -118,7 +118,6 @@ function write_data_block( fout, indata, tmp_filename )
 
         # Get current position and write out current position to temp file
         write( fouttmp, current_gpos.pos )
-        write( fouttmp, UInt32( position(fout) ) )
 
 
         # Go through the cells and record calls for this position
