@@ -70,13 +70,14 @@ function write_cells_block( fout, cellnames )
 end
 
 function write_data_block( fout, indata, tmp_filename )
+    chrom_sentinel = "___none___just_starting___"
     word = UInt32(0)
     bitpos = 0
     current_recs = take!.( indata )
-    prev_chrom = "___none___just_starting___"
+    prev_chrom = chrom_sentinel
     fouttmp = open( tmp_filename, "w" )
     chroms = []
-    for ii in 1:10000000
+    for ii in 1:2000000
 
         # Get current position and write it out to temp file
         current_gpos = minimum( mr.gpos for mr in current_recs )
@@ -84,7 +85,9 @@ function write_data_block( fout, indata, tmp_filename )
 
         # Are we starting a new chrosome?
         if current_gpos.chrom != prev_chrom
-            print( "Chromosome $(current_gpos.chrom) starts at $(position(fouttmp)).\n" )
+            if prev_chrom != "___none___just_starting___"
+                print( "Chromosome '$(prev_chrom)' processed.\n" )
+            end
             push!( chroms, ( name = current_gpos.chrom, filepos = position(fouttmp) ) )
             prev_chrom = current_gpos.chrom
         end
@@ -119,6 +122,7 @@ function write_data_block( fout, indata, tmp_filename )
 
         end
     end    
+    print( "Chromosome '$(prev_chrom)' processed.\n" )
     close( fouttmp )
     chroms
 end
@@ -154,17 +158,9 @@ function make_methrec_channel( fin )
     Channel( f )
 end
 
-function main()
-    methcalls_dir = "/home/anders/w/metdense/gastrulation/raw_data"
-    methcalls_filenames = readdir( methcalls_dir )[1:10]
-    cellnames = replace.( methcalls_filenames, ".tsv.gz"=>"")
-
-    fins = GZip.open.( methcalls_dir * "/" .* methcalls_filenames )
-    readline.( fins )  # Skip header
-    inputs = make_methrec_channel.( fins )
-
-    fout = open( "test.metdense", "w" )
-    temp_filename = "test.tmp"
+function make_metdense_file( outfilename, inputs, cellnames )
+    fout = open( outfilename, "w" )
+    temp_filename = outfilename * ".tmp"
 
     write_header_block( fout )   
     write_cells_block( fout, cellnames )    
@@ -177,6 +173,18 @@ function main()
     write( fout, UInt32(start_chromosomes_block) )
 
     close( fout )
+end
+
+function main()
+    methcalls_dir = "/home/anders/w/metdense/gastrulation/raw_data"
+    methcalls_filenames = readdir( methcalls_dir )[1:10]
+    cellnames = replace.( methcalls_filenames, ".tsv.gz"=>"")
+
+    fins = GZip.open.( methcalls_dir * "/" .* methcalls_filenames )
+    readline.( fins )  # Skip header
+    inputs = make_methrec_channel.( fins )
+
+    make_metdense_file( "test.metdense", inputs, cellnames )
 end
 
 main()
