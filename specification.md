@@ -18,7 +18,8 @@ The data from the Positions and Data Blocks can be read on demand from disk.
 - Bytes 0-7: The string "MetDense"
 - Bytes 8-11: The major version number of the format spec as uint32 (for now: 0)
 - Bytes 12-15: The minor version number as uint32 (for now: 0)
-- Bytes 16-19: The offset (position in the file) of the Chromosomes block
+- Bytes 16-19: The offset (position in the file) of the Data block
+- Bytes 20-23: The offset (position in the file) of the Chromosomes block
 
 ### Cells Block
 

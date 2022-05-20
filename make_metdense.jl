@@ -46,13 +46,14 @@ function line_to_methrec( line )
     MethRecord( gp, call )
 end
 
-const chrom_block_pos_offset = 16
+const data_block_pos_offset = 16
 
 function write_header_block( fout )
     write( fout, "MetDense" )
     write( fout, UInt32(0) )  # major version
     write( fout, UInt32(0) )  # minor version
-    @assert position(fout) == chrom_block_pos_offset
+    @assert position(fout) == data_block_pos_offset
+    write( fout, Int32(-1) )  # placeholder for position of Data block   
     write( fout, Int32(-1) )  # placeholder for position of Chromosomes block   
 end
 
@@ -164,12 +165,14 @@ function make_metdense_file( outfilename, inputs, cellnames )
 
     write_header_block( fout )   
     write_cells_block( fout, cellnames )    
+    start_data_block = position( fout )
     chroms = write_data_block( fout, inputs, temp_filename )    
     start_positions_block = position( fout )
-    copy_positions_block( fout, "test.tmp" )
+    copy_positions_block( fout, temp_filename )
     start_chromosomes_block = position( fout )
     write_chromosomes_block( fout, chroms, start_positions_block )
-    seek( fout, chrom_block_pos_offset )
+    seek( fout, data_block_pos_offset )
+    write( fout, UInt32(start_data_block) )
     write( fout, UInt32(start_chromosomes_block) )
 
     close( fout )
