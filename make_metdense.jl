@@ -112,6 +112,7 @@ function write_data_block( fout, indata, tmp_filename )
             if current_gpos == EOFMarker()
                 break
             end
+            @assert prev_chrom < current_gpos.chrom || prev_chrom == chrom_none_yet 
             push!( chroms, ( name = current_gpos.chrom, filepos = position(fouttmp) ) )
             prev_chrom = current_gpos.chrom
         end
@@ -129,7 +130,14 @@ function write_data_block( fout, indata, tmp_filename )
                 call = nocall
             else
                 call = current_recs[i].call
+
+                prev_pos = current_recs[i].gpos
                 current_recs[i] = take!( indata[i] )
+                if current_recs[i].gpos <= prev_pos
+                    error( "File $i is not correctly sorted: " *
+                       "$(prev_pos.chrom):$(prev_pos.pos) is followed by " *
+                       "$(current_recs[i].gpos.chrom):$(current_recs[i].gpos.pos)." )
+                end
             end
 
             # Add call to word
