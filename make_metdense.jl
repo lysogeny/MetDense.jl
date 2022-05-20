@@ -15,7 +15,7 @@ end
 struct EOFMarker
 end
 
-GenomicPositionOrEOF = Union{GenomicPosition,EOFMarker}
+GenomicPositionOrEOF = Union{ GenomicPosition, EOFMarker }
 
 function Base.isless( gp1 ::GenomicPosition, gp2 ::GenomicPosition )
     if gp1.chrom == gp2.chrom
@@ -30,7 +30,7 @@ Base.isless( gp1 ::GenomicPosition, gp2 ::EOFMarker ) = true
 
 struct MethRecord
     gpos :: GenomicPositionOrEOF
-    call :: MethCall   # for now
+    call :: MethCall   
 end
 
 function line_to_methrec( line )
@@ -92,11 +92,11 @@ function handle_input_eof( inchannel:: Channel{MethRecord} ) ::Channel{MethRecor
 end
 
 function write_data_block( fout, indata, tmp_filename )
-    chrom_sentinel = "___none___just_starting___"
+    chrom_none_yet = "___none___just_starting___"
     word = UInt32(0)
     bitpos = 0
-    current_recs :: Union{ Array{MethRecord}, Nothing } = take!.( indata )
-    prev_chrom = chrom_sentinel
+    current_recs :: Array{MethRecord} = take!.( indata )
+    prev_chrom = chrom_none_yet
     fouttmp = open( tmp_filename, "w" )
     chroms = []
     while true
@@ -106,7 +106,7 @@ function write_data_block( fout, indata, tmp_filename )
 
         # Are we starting a new chromosome?
         if current_gpos == EOFMarker() || current_gpos.chrom != prev_chrom
-            if prev_chrom != "___none___just_starting___"
+            if prev_chrom != chrom_none_yet
                 print( "Chromosome '$(prev_chrom)' processed.\n" )
             end
             if current_gpos == EOFMarker()
