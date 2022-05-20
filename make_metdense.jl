@@ -131,9 +131,6 @@ function write_data_block( fout, indata, tmp_filename )
             else
                 call = current_recs[i].call
                 current_recs[i] = take!( indata[i] )
-                if current_recs[i].gpos == EOFMarker()
-                    print( "Finished with cell  $i.\n")
-                end
             end
 
             # Add call to word
@@ -204,9 +201,9 @@ function make_metdense_file( outfilename, inputs, cellnames )
 end
 
 function main()
-    #methcalls_dir = "/home/anders/w/metdense/gastrulation/raw_data"
-    methcalls_dir = "/home/anders/w/metdense/testshort/"
-    methcalls_filenames = readdir( methcalls_dir ) #[1:10]
+    methcalls_dir = "/home/anders/w/metdense/gastrulation/raw_data"
+    #methcalls_dir = "/home/anders/w/metdense/testshort/"
+    methcalls_filenames = readdir( methcalls_dir )[1:40]
     cellnames = replace.( methcalls_filenames, ".tsv.gz"=>"")
 
     fins = GZip.open.( methcalls_dir * "/" .* methcalls_filenames )
