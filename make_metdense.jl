@@ -81,25 +81,16 @@ function write_cells_block( fout, cellnames )
     end    
 end
 
-function handle_input_eof( inchannel:: Channel{MethRecord} ) ::Channel{MethRecord}
-    f = function( ch::Channel )
-        while isready( inch )
-            put!( ch, take!(inchannel) )
-        end
-        put!( ch, MethRecord( GenomicPosition( nothing, 0 ), nocall ) )
-    end
-    Channel( f )
-end
-
 function write_data_block( fout, indata, tmp_filename )
-    chrom_none_yet = "___none___just_starting___"
-    word = UInt32(0)
-    bitpos = 0
-    current_recs :: Array{MethRecord} = take!.( indata )
+    chrom_none_yet = "___none___just_starting___"  # placeholder constant
     prev_chrom = chrom_none_yet
     fouttmp = open( tmp_filename, "w" )
     chroms = []
     numdots = 0
+    word = UInt32(0)
+    bitpos = 0
+    current_recs :: Array{MethRecord} = take!.( indata )
+
     while true
 
         # Get current position and write it out to temp file
@@ -123,26 +114,27 @@ function write_data_block( fout, indata, tmp_filename )
             numdots = 0
         end
 
+        # Progress indication
         if current_gpos.pos ÷ 10000000 > numdots
             newdots = current_gpos.pos ÷ 10000000 - numdots
             print( "." ^ newdots )
             numdots += newdots
         end
 
-        # Get current position and write out current position to temp file
+        # Write out current position to temp file, for later includion into Positions block
         write( fouttmp, current_gpos.pos )
-
 
         # Go through the cells and record calls for this position
         for i in 1:length(indata) 
 
-            # Get call for current cell
+            # Get methylation call for current cell
             if current_recs[i].gpos != current_gpos
                 @assert current_recs[i].gpos > current_gpos
                 call = nocall
             else
                 call = current_recs[i].call
 
+                # Check for correct sorting
                 prev_pos = current_recs[i].gpos
                 current_recs[i] = take!( indata[i] )
                 if current_recs[i].gpos <= prev_pos
@@ -150,6 +142,7 @@ function write_data_block( fout, indata, tmp_filename )
                        "$(prev_pos.chrom):$(prev_pos.pos) is followed by " *
                        "$(current_recs[i].gpos.chrom):$(current_recs[i].gpos.pos)." )
                 end
+
             end
 
             # Add call to word
@@ -157,7 +150,7 @@ function write_data_block( fout, indata, tmp_filename )
             bitpos += 2
     
             # Is the word full? If so, write it
-            if bitpos > 30
+            if bitpos >= 32
                 write( fout, UInt32(word) )
                 word  = UInt32(0)
                 bitpos = 0
@@ -223,7 +216,7 @@ end
 function main()
     methcalls_dir = "/home/anders/w/metdense/gastrulation/raw_data"
     #methcalls_dir = "/home/anders/w/metdense/testshort/"
-    methcalls_filenames = readdir( methcalls_dir )[1:40]
+    methcalls_filenames = readdir( methcalls_dir )[1:25]
     cellnames = replace.( methcalls_filenames, ".tsv.gz"=>"")
 
     fins = GZip.open.( methcalls_dir * "/" .* methcalls_filenames )
