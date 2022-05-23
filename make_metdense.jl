@@ -102,12 +102,6 @@ function write_data_block( fout, indata, tmp_filename )
                 break
             end
             @assert prev_chrom < current_gpos.chrom || prev_chrom == chrom_none_yet 
-            if bitpos > 0
-                # We have an unfinished word left over from the previous chromosome
-                write( fout, UInt32(word) )
-                word  = UInt32(0)
-                bitpos = 0
-            end
             print( "\nProcessing chromosome $( rpad( current_gpos.chrom, 3) ) ")
             push!( chroms, ( name = current_gpos.chrom, filepos = position(fouttmp) ) )
             prev_chrom = current_gpos.chrom
@@ -157,6 +151,14 @@ function write_data_block( fout, indata, tmp_filename )
             end
 
         end
+
+        # Unless we have just written out the word, we still need to do that.
+        if bitpos > 0
+            write( fout, UInt32(word) )
+            word  = UInt32(0)
+            bitpos = 0
+        end
+
     end    
     close( fouttmp )
     print( "\n" )
@@ -217,7 +219,7 @@ function main()
     methcalls_dir = "/home/anders/w/metdense/gastrulation/raw_data"
     #methcalls_dir = "/home/anders/w/metdense/testshort/"
     methcalls_filenames = readdir( methcalls_dir )[1:25]
-    cellnames = replace.( methcalls_filenames, ".tsv.gz"=>"")
+    cellnames = replace.( methcalls_filenames, ".tsv.gz"=>"" )
 
     fins = GZip.open.( methcalls_dir * "/" .* methcalls_filenames )
     readline.( fins )  # Skip header
