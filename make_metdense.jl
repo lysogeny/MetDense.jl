@@ -238,7 +238,9 @@ function main(type::String)
     end
 
     fins = GZip.open.( methcalls_dir * "/" .* methcalls_filenames )
-    #readline.( fins )  # Skip header
+    if(type != "cov")
+        readline.( fins )  # Skip header
+    end
     inputs = make_methrec_channel.( fins, type )
 
     make_metdense_file( "test.metdense", inputs, cellnames )
