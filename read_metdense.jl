@@ -12,7 +12,7 @@ end
 
 struct GenomicInterval
     chrom :: String
-    iv :: Range{UInt32}
+    iv :: Tuple{UInt32, UInt32}
 end
 
 struct MetDenseFile
@@ -51,7 +51,7 @@ function MetDenseFile( filename ::String )
     chroms_dict = Dict( names_chroms[i] =>
         range( offsets_chroms[i],
             i < n_chroms ? offsets_chroms[i + 1] - 1 : offset_chroms_block - 1;
-            step = 4 * ceil(UInt64, n_cells / 16))
+            step = 4)
         for i = 1:n_chroms )
 
     MetDenseFile( f, names_cells, chroms_dict, offset_data_block )
@@ -62,14 +62,14 @@ function read_at_position( f, pos, type )
     read( f, type )
 end
 
-function get_position( mdf ::MetDenseFile, gi:: GenomicInterval )
+function get_interval( mdf::MetDenseFile, gi::GenomicInterval )
     from = searchsortedfirst(
-        mdf.chroms_dict[ gp.chrom ], gp.pos,
-        by = ( x -> read_at_position( mdf.f, x, UInt32 ) ) )
+        mdf.chroms_dict[ gi.chrom ], gi.iv[1];
+        lt = (x, y) -> read_at_position( mdf.f, x, UInt32 ) < y )
      to = searchsortedlast(
-        mdf.chroms_dict[ gp.chrom ], gp.pos,
-        by = ( x -> read_at_position( mdf.f, x, UInt32 ) ) )
-    range( from, to )
+        mdf.chroms_dict[ gi.chrom ], gi.iv[2];
+        lt = (x, y) -> x < read_at_position( mdf.f, y, UInt32 ) )
+    return from:to
 end
 
 function main()
@@ -83,7 +83,7 @@ end
 
 main()
 
-gp = GenomicPosition( "2", 1234567 )
 
 df = MetDenseFile("data/test.metdense")
 df.chroms_dict
+get_interval( df, GenomicInterval( "2", (3058898, 4050898) ))
