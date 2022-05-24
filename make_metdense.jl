@@ -231,7 +231,7 @@ function main(type::String)
     if(type == "cov")
         methcalls_filenames = @pipe readdir( methcalls_dir ) |>
             filter(x -> occursin(r"DCM.cov.gz$", x), _)
-        cellnames = replace.( methcalls_filenames, "-DCM.tsv.gz" => "")
+        cellnames = replace.( methcalls_filenames, "-DCM.cov.gz" => "")
     else
         methcalls_filenames = readdir( methcalls_dir )[1:25]
         cellnames = replace.( methcalls_filenames, ".tsv.gz" => "" )
