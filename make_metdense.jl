@@ -31,7 +31,7 @@ Base.isless( gp1 ::GenomicPosition, gp2 ::EOFMarker ) = true
 
 struct MethRecord
     gpos :: GenomicPositionOrEOF
-    call :: MethCall   
+    call :: MethCall
 end
 
 function line_to_methrec( line, type )
@@ -46,7 +46,7 @@ function line_to_methrec( line, type )
     else
         count_meth = parse( Int, fields[3] )
         count_unmeth = parse( Int, fields[4] )
-    end        
+    end
     if count_meth == 0
         if count_unmeth == 0
             call = nocall
@@ -70,21 +70,21 @@ function write_header_block( fout )
     write( fout, UInt32(0) )  # major version
     write( fout, UInt32(0) )  # minor version
     @assert position(fout) == data_block_pos_offset
-    write( fout, Int32(-1) )  # placeholder for position of Data block   
-    write( fout, Int32(-1) )  # placeholder for position of Chromosomes block   
+    write( fout, Int32(-1) )  # placeholder for position of Data block
+    write( fout, Int32(-1) )  # placeholder for position of Chromosomes block
 end
 
 function write_cells_block( fout, cellnames )
     # Number of cells
     write( fout, UInt32( length(cellnames) ) )
     # Cell names
-    for s in cellnames  
+    for s in cellnames
         write( fout, s, "\n" )
     end
     # Padding
     for i in 1:( position(fout) % 4 ) # Padding
         write( fout, UInt8(0) )
-    end    
+    end
 end
 
 function write_data_block( fout, indata, tmp_filename )
@@ -107,13 +107,7 @@ function write_data_block( fout, indata, tmp_filename )
             if current_gpos == EOFMarker()
                 break
             end
-            @assert prev_chrom < current_gpos.chrom || prev_chrom == chrom_none_yet 
-            if bitpos > 0
-                # We have an unfinished word left over from the previous chromosome
-                write( fout, UInt32(word) )
-                word  = UInt32(0)
-                bitpos = 0
-            end
+            @assert prev_chrom < current_gpos.chrom || prev_chrom == chrom_none_yet
             print( "\nProcessing chromosome $( rpad( current_gpos.chrom, 3) ) ")
             push!( chroms, ( name = current_gpos.chrom, filepos = position(fouttmp) ) )
             prev_chrom = current_gpos.chrom
@@ -131,7 +125,7 @@ function write_data_block( fout, indata, tmp_filename )
         write( fouttmp, current_gpos.pos )
 
         # Go through the cells and record calls for this position
-        for i in 1:length(indata) 
+        for i in 1:length(indata)
 
             # Get methylation call for current cell
             if current_recs[i].gpos != current_gpos
@@ -154,7 +148,7 @@ function write_data_block( fout, indata, tmp_filename )
             # Add call to word
             word |= ( UInt32(call) << bitpos )
             bitpos += 2
-    
+
             # Is the word full? If so, write it
             if bitpos >= 32
                 write( fout, UInt32(word) )
@@ -163,7 +157,15 @@ function write_data_block( fout, indata, tmp_filename )
             end
 
         end
-    end    
+
+        # Unless we have just written out the word, we still need to do that.
+        if bitpos > 0
+            write( fout, UInt32(word) )
+            word  = UInt32(0)
+            bitpos = 0
+        end
+
+    end
     close( fouttmp )
     print( "\n" )
     chroms
@@ -204,10 +206,10 @@ function make_metdense_file( outfilename, inputs, cellnames )
     fout = open( outfilename, "w" )
     temp_filename = outfilename * ".tmp"
 
-    write_header_block( fout )   
-    write_cells_block( fout, cellnames )    
+    write_header_block( fout )
+    write_cells_block( fout, cellnames )
     start_data_block = position( fout )
-    chroms = write_data_block( fout, inputs, temp_filename )    
+    chroms = write_data_block( fout, inputs, temp_filename )
     start_positions_block = position( fout )
     copy_positions_block( fout, temp_filename )
     start_chromosomes_block = position( fout )

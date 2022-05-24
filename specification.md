@@ -69,7 +69,7 @@ For efficiency reasons, it may be better to read four bytes (one uint32) per fil
 
 ## Positions block
 
-For each chromosome, a vector of uint32 values, giving the base pair positions of all CpG sites recorded for this chromosome in the Data Block. Therefore, the Positions Block contains in total as many uints32 as there are matrix rows in the Data Block. Hence: 
+For each chromosome, a vector of uint32 values, giving the base-pair positions of all CpG sites recorded for this chromosome in the Data Block. Therefore, the Positions Block contains in total as many uints32 as there are matrix rows in the Data Block. Hence: 
   
   length_in_bytes(DataBlock) / ceil(ncells/4) == length_in_bytes(PositionsBlock) / 4
 
