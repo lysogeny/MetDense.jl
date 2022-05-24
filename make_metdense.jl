@@ -10,7 +10,7 @@ end
 
 struct GenomicPosition
     chrom :: String
-    pos :: Int32
+    pos :: UInt32
 end
 
 struct EOFMarker
@@ -39,7 +39,7 @@ function line_to_methrec( line, type )
         return MethRecord( EOFMarker(), nocall )
     end
     fields = split( line, "\t" )
-    gp = GenomicPosition( fields[1], parse( Int32, fields[2] ) )
+    gp = GenomicPosition( fields[1], parse( UInt32, fields[2] ) )
     if type == "cov"
         count_meth = parse( Int, fields[5] )
         count_unmeth = parse( Int, fields[6] )
@@ -68,10 +68,10 @@ const data_block_pos_offset = 16
 function write_header_block( fout )
     write( fout, "MetDense" )
     write( fout, UInt32(0) )  # major version
-    write( fout, UInt32(0) )  # minor version
+    write( fout, UInt32(1) )  # minor version
     @assert position(fout) == data_block_pos_offset
-    write( fout, Int32(-1) )  # placeholder for position of Data block
-    write( fout, Int32(-1) )  # placeholder for position of Chromosomes block
+    write( fout, Int64(-1) )  # placeholder for position of Data block
+    write( fout, Int64(-1) )  # placeholder for position of Chromosomes block
 end
 
 function write_cells_block( fout, cellnames )
@@ -187,7 +187,7 @@ function write_chromosomes_block( fout, chroms, start_positions_block )
     # Number of chromosomes
     write( fout, UInt32( length( chroms ) ) )
     for a in chroms
-        write( fout, UInt32( a.filepos + start_positions_block ) )
+        write( fout, UInt64( a.filepos + start_positions_block ) )
     end
     for a in chroms
         write( fout, a.name, "\n" )
@@ -216,8 +216,8 @@ function make_metdense_file( outfilename, inputs, cellnames )
     start_chromosomes_block = position( fout )
     write_chromosomes_block( fout, chroms, start_positions_block )
     seek( fout, data_block_pos_offset )
-    write( fout, UInt32(start_data_block) )
-    write( fout, UInt32(start_chromosomes_block) )
+    write( fout, UInt64(start_data_block) )
+    write( fout, UInt64(start_chromosomes_block) )
 
     close( fout )
 end
