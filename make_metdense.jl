@@ -1,4 +1,5 @@
 import GZip
+import Pipe: @pipe
 
 @enum MethCall ::UInt32 begin
     nocall = 0x00
@@ -33,14 +34,19 @@ struct MethRecord
     call :: MethCall   
 end
 
-function line_to_methrec( line )
+function line_to_methrec( line, type )
     if line == ""
         return MethRecord( EOFMarker(), nocall )
     end
     fields = split( line, "\t" )
     gp = GenomicPosition( fields[1], parse( Int32, fields[2] ) )
-    count_meth = parse( Int, fields[3] )
-    count_unmeth = parse( Int, fields[4] )
+    if type == "cov"
+        count_meth = parse( Int, fields[5] )
+        count_unmeth = parse( Int, fields[6] )
+    else
+        count_meth = parse( Int, fields[3] )
+        count_unmeth = parse( Int, fields[4] )
+    end        
     if count_meth == 0
         if count_unmeth == 0
             call = nocall
@@ -185,10 +191,10 @@ function write_chromosomes_block( fout, chroms, start_positions_block )
     end
 end
 
-function make_methrec_channel( fin )
+function make_methrec_channel( fin, type )
     f = function(ch::Channel)
         while !eof( fin )
-            put!( ch, line_to_methrec( readline( fin ) ) )
+            put!( ch, line_to_methrec( readline( fin ), type ) )
         end
     end
     Channel( f )
@@ -213,15 +219,24 @@ function make_metdense_file( outfilename, inputs, cellnames )
     close( fout )
 end
 
-function main()
-    methcalls_dir = "/home/anders/w/metdense/gastrulation/raw_data"
+function main(type::String)
+    #methcalls_dir = "/home/anders/w/metdense/gastrulation/raw_data"
     #methcalls_dir = "/home/anders/w/metdense/testshort/"
-    methcalls_filenames = readdir( methcalls_dir )[1:25]
-    cellnames = replace.( methcalls_filenames, ".tsv.gz"=>"")
+    methcalls_dir = "/home/tyranchick/mnt/mnt/raid/sveta/dcm/data/covs"
+
+
+    if(type == "cov")
+        methcalls_filenames = @pipe readdir( methcalls_dir ) |>
+            filter(x -> occursin(r"DCM.cov.gz$", x), _)
+        cellnames = replace.( methcalls_filenames, "-DCM.tsv.gz" => "")
+    else
+        methcalls_filenames = readdir( methcalls_dir )[1:25]
+        cellnames = replace.( methcalls_filenames, ".tsv.gz" => "" )
+    end
 
     fins = GZip.open.( methcalls_dir * "/" .* methcalls_filenames )
-    readline.( fins )  # Skip header
-    inputs = make_methrec_channel.( fins )
+    #readline.( fins )  # Skip header
+    inputs = make_methrec_channel.( fins, type )
 
     make_metdense_file( "test.metdense", inputs, cellnames )
 end
