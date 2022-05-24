@@ -1,4 +1,5 @@
 import GZip
+import Pipe: @pipe
 
 @enum MethCall ::UInt32 begin
     nocall = 0x00
@@ -30,17 +31,22 @@ Base.isless( gp1 ::GenomicPosition, gp2 ::EOFMarker ) = true
 
 struct MethRecord
     gpos :: GenomicPositionOrEOF
-    call :: MethCall   
+    call :: MethCall
 end
 
-function line_to_methrec( line )
+function line_to_methrec( line, type )
     if line == ""
         return MethRecord( EOFMarker(), nocall )
     end
     fields = split( line, "\t" )
     gp = GenomicPosition( fields[1], parse( Int32, fields[2] ) )
-    count_meth = parse( Int, fields[3] )
-    count_unmeth = parse( Int, fields[4] )
+    if type == "cov"
+        count_meth = parse( Int, fields[5] )
+        count_unmeth = parse( Int, fields[6] )
+    else
+        count_meth = parse( Int, fields[3] )
+        count_unmeth = parse( Int, fields[4] )
+    end
     if count_meth == 0
         if count_unmeth == 0
             call = nocall
@@ -64,21 +70,21 @@ function write_header_block( fout )
     write( fout, UInt32(0) )  # major version
     write( fout, UInt32(0) )  # minor version
     @assert position(fout) == data_block_pos_offset
-    write( fout, Int32(-1) )  # placeholder for position of Data block   
-    write( fout, Int32(-1) )  # placeholder for position of Chromosomes block   
+    write( fout, Int32(-1) )  # placeholder for position of Data block
+    write( fout, Int32(-1) )  # placeholder for position of Chromosomes block
 end
 
 function write_cells_block( fout, cellnames )
     # Number of cells
     write( fout, UInt32( length(cellnames) ) )
     # Cell names
-    for s in cellnames  
+    for s in cellnames
         write( fout, s, "\n" )
     end
     # Padding
     for i in 1:( position(fout) % 4 ) # Padding
         write( fout, UInt8(0) )
-    end    
+    end
 end
 
 function write_data_block( fout, indata, tmp_filename )
@@ -101,7 +107,7 @@ function write_data_block( fout, indata, tmp_filename )
             if current_gpos == EOFMarker()
                 break
             end
-            @assert prev_chrom < current_gpos.chrom || prev_chrom == chrom_none_yet 
+            @assert prev_chrom < current_gpos.chrom || prev_chrom == chrom_none_yet
             print( "\nProcessing chromosome $( rpad( current_gpos.chrom, 3) ) ")
             push!( chroms, ( name = current_gpos.chrom, filepos = position(fouttmp) ) )
             prev_chrom = current_gpos.chrom
@@ -119,7 +125,7 @@ function write_data_block( fout, indata, tmp_filename )
         write( fouttmp, current_gpos.pos )
 
         # Go through the cells and record calls for this position
-        for i in 1:length(indata) 
+        for i in 1:length(indata)
 
             # Get methylation call for current cell
             if current_recs[i].gpos != current_gpos
@@ -142,7 +148,7 @@ function write_data_block( fout, indata, tmp_filename )
             # Add call to word
             word |= ( UInt32(call) << bitpos )
             bitpos += 2
-    
+
             # Is the word full? If so, write it
             if bitpos >= 32
                 write( fout, UInt32(word) )
@@ -159,7 +165,7 @@ function write_data_block( fout, indata, tmp_filename )
             bitpos = 0
         end
 
-    end    
+    end
     close( fouttmp )
     print( "\n" )
     chroms
@@ -174,6 +180,7 @@ function copy_positions_block( fout, temp_filename )
         write( fout, buffer[1:nb] )
     end
     close( fin )
+    rm( temp_filename )
 end
 
 function write_chromosomes_block( fout, chroms, start_positions_block )
@@ -187,10 +194,10 @@ function write_chromosomes_block( fout, chroms, start_positions_block )
     end
 end
 
-function make_methrec_channel( fin )
+function make_methrec_channel( fin, type )
     f = function(ch::Channel)
         while !eof( fin )
-            put!( ch, line_to_methrec( readline( fin ) ) )
+            put!( ch, line_to_methrec( readline( fin ), type ) )
         end
     end
     Channel( f )
@@ -200,10 +207,10 @@ function make_metdense_file( outfilename, inputs, cellnames )
     fout = open( outfilename, "w" )
     temp_filename = outfilename * ".tmp"
 
-    write_header_block( fout )   
-    write_cells_block( fout, cellnames )    
+    write_header_block( fout )
+    write_cells_block( fout, cellnames )
     start_data_block = position( fout )
-    chroms = write_data_block( fout, inputs, temp_filename )    
+    chroms = write_data_block( fout, inputs, temp_filename )
     start_positions_block = position( fout )
     copy_positions_block( fout, temp_filename )
     start_chromosomes_block = position( fout )
@@ -215,17 +222,28 @@ function make_metdense_file( outfilename, inputs, cellnames )
     close( fout )
 end
 
-function main()
-    methcalls_dir = "/home/anders/w/metdense/gastrulation/raw_data"
+function main(type::String)
+    #methcalls_dir = "/home/anders/w/metdense/gastrulation/raw_data"
     #methcalls_dir = "/home/anders/w/metdense/testshort/"
-    methcalls_filenames = readdir( methcalls_dir )[1:25]
-    cellnames = replace.( methcalls_filenames, ".tsv.gz"=>"" )
+    methcalls_dir = "/home/tyranchick/mnt/mnt/raid/sveta/dcm/data/covs"
+
+
+    if(type == "cov")
+        methcalls_filenames = @pipe readdir( methcalls_dir ) |>
+            filter(x -> occursin(r"DCM.cov.gz$", x), _)
+        cellnames = replace.( methcalls_filenames, "-DCM.tsv.gz" => "")
+    else
+        methcalls_filenames = readdir( methcalls_dir )[1:25]
+        cellnames = replace.( methcalls_filenames, ".tsv.gz" => "" )
+    end
 
     fins = GZip.open.( methcalls_dir * "/" .* methcalls_filenames )
-    readline.( fins )  # Skip header
-    inputs = make_methrec_channel.( fins )
+    if(type != "cov")
+        readline.( fins )  # Skip header
+    end
+    inputs = make_methrec_channel.( fins, type )
 
     make_metdense_file( "test.metdense", inputs, cellnames )
 end
 
-main()
+main("cov")
