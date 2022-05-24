@@ -180,6 +180,7 @@ function copy_positions_block( fout, temp_filename )
         write( fout, buffer[1:nb] )
     end
     close( fin )
+    rm( temp_filename )
 end
 
 function write_chromosomes_block( fout, chroms, start_positions_block )
@@ -243,4 +244,4 @@ function main(type::String)
     make_metdense_file( "test.metdense", inputs, cellnames )
 end
 
-main()
+main("cov")
