@@ -76,17 +76,11 @@ function get_interval( mdf::MetDenseFile, gi::GenomicInterval )
 end
 
 function main()
-
     mdf = MetDenseFile( "test.metdense" )
-
     print( get_position( mdf, GenomicPosition( "2", 1234567 ) ) )
-
 end
-
 
 main()
 
-
 df = MetDenseFile("data/test.metdense")
-df.chroms_dict
-get_interval( df, GenomicInterval( "2", (3058898, 4050898) ))
+int, pos = get_interval( df, GenomicInterval( "2", (3058898, 4050898) ))
