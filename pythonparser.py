@@ -101,7 +101,7 @@ class MetDenseFile:
         if not lower <= upper: raise ValueError("Upper range is not larger than lower range.")
         pos = self.chromosome_names.index(str(chromosome))
         lower_bound, upper_bound = self.positions_start[pos]//4, self.positions_end[pos]//4
-        lower_bound_pos, upper_bound_pos = self[lower_bound], self[upper_bound]
+        lower_bound_pos, upper_bound_pos = self[lower_bound], self[upper_bound-1]
         if not lower_bound_pos <= upper: raise ValueError("Upper bound does not include anything.")
         if not upper_bound_pos >= lower: raise ValueError("Lower bound does not include anything.")
         lower_index = 4*bisect.bisect_left(self, lower, lo=lower_bound, hi=upper_bound) if lower > lower_bound_pos else 4*lower_bound
@@ -121,6 +121,8 @@ class MetDenseFile:
     #### Read Data
     def read_data_rows(self, lower, upper):
         """ Read a range of data rows from the data block.
+            Loading is almost instantaneous, most of the time is spent on the shift and the concatenation.
+            (equal parts, no idea why concatenation is so slow; allocating the memory beforehand and setting parts of the new array is even slower)
             
             lower: lower row number (inclusive)
             upper: upper row number (exclusive)
@@ -152,7 +154,7 @@ class MetDenseFile:
     def read_data_full(self):
         """ Read the full data.
         """
-        return self.read_data_rows(self.data_start, self.self.positions_start[0])
+        return self.read_data_rows(self.data_start, self.positions_start[0])
     
     #### Read Positions
     def read_positions_range(self, chromosome, lower=0, upper=1e30):
