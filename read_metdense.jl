@@ -63,7 +63,7 @@ function MetDenseFile( filename ::String )
                 i < n_chroms ? offsets_chroms[i + 1] - 1 : offset_chroms_block - 1;
                 step = UInt64(4) )
         
-        stop_in_data = start_in_data + rowlength * length( filepos_in_positions_block )
+        stop_in_data = start_in_data + rowlength * ( length( filepos_in_positions_block ) - 1 )
         filepos_in_data_block =
             range( start_in_data, stop_in_data; step = rowlength )
         start_in_data = stop_in_data + rowlength
