@@ -94,10 +94,22 @@ end
 
 function main_simon()
     mdf = MetDenseFile("data/gastrulation.metdense")
-    iv, bpps = get_interval( mdf, GenomicInterval( "2", (3058898, 4050898) ))
-    println( iv )
-    println( Int.(bpps)[1:10] )
-    println( Int.(bpps)[end-10:end] )
+    iv, bpps = get_interval( mdf, GenomicInterval( "2", (4200000, 4700000) ))
+    #println( iv )
+    mypos = findfirst( x -> x == 4220582, bpps )
+    println( "Now looking at position 2:", bpps[mypos] )
+    seek( mdf.f, mdf.chroms_filepos["2"].data[ iv[mypos] ] )
+    word = 99
+    for cell in 1:length( mdf.cell_names )
+        if (cell-1) % 16 == 0
+            word = read( mdf.f, UInt32 )
+        end
+        call = MethCall( word & 0x03 )
+        if call != nocall
+            println( "  Cell $cell ($(mdf.cell_names[cell])): $call" )
+        end
+        word >>= 2
+    end
 end
 
 main_simon()
