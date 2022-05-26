@@ -33,7 +33,7 @@ function MetDenseFile( filename ::String )
     # Read and check magic string
     s = Vector{UInt8}(undef,8)
     readbytes!( f, s )
-    @assert s == Vector{UInt8}("MetDense")
+    @assert s == b"MetDense"
 
     # Read version
     version = ( read( f, UInt32 ), read( f, UInt32 ) )
