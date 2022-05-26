@@ -66,6 +66,7 @@ function MetDenseFile( filename ::String )
         stop_in_data = start_in_data + rowlength * length( filepos_in_positions_block )
         filepos_in_data_block =
             range( start_in_data, stop_in_data; step = rowlength )
+        start_in_data = stop_in_data + rowlength
         
         chroms_filepos[ names_chroms[i] ] = ChromFileposInfo( 
             filepos_in_positions_block, filepos_in_data_block )
