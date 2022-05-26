@@ -82,7 +82,7 @@ function write_cells_block( fout, cellnames )
         write( fout, s, "\n" )
     end
     # Padding
-    for i in 1:( position(fout) % 4 ) # Padding
+    for i in 1:( 4 - position(fout) % 4 ) # Padding
         write( fout, UInt8(0) )
     end
 end
@@ -96,6 +96,7 @@ function write_data_block( fout, indata, tmp_filename )
     word = UInt32(0)
     bitpos = 0
     current_recs :: Array{MethRecord} = take!.( indata )
+    @assert position(fout) % 4 == 0
 
     while true
 
