@@ -65,7 +65,7 @@ function MetDenseFile( filename ::String )
         
         stop_in_data = start_in_data + rowlength * length( filepos_in_positions_block )
         filepos_in_data_block =
-            range( start_in_data, stop_in_data; step=rowlength )
+            range( start_in_data, stop_in_data; step = rowlength )
         
         chroms_filepos[ names_chroms[i] ] = ChromFileposInfo( 
             filepos_in_positions_block, filepos_in_data_block )
@@ -94,7 +94,7 @@ end
 
 function main_simon()
     mdf = MetDenseFile("data/gastrulation.metdense")
-    iv, bpps = get_interval( df, GenomicInterval( "2", (3058898, 4050898) ))
+    iv, bpps = get_interval( mdf, GenomicInterval( "2", (3058898, 4050898) ))
     println( iv )
     println( Int.(bpps)[1:10] )
     println( Int.(bpps)[end-10:end] )
