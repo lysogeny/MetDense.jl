@@ -70,7 +70,11 @@ function Base.iterate(mi::MethIterator, state)
     end
     #now we need to figure out whether to use the current word or read the new one
     #just read the new word for test purposes
-    word = read_word(mi.mdf, mi.cpgInd[cpgInd], mi.cells[cellInd])
+    if (mi.cells[cellInd] % 16  == 1) | (mi.cells[cellInd] - mi.cells[cellInd - 1] > 15) 
+        word = read_word(mi.mdf, mi.cpgInd[cpgInd], mi.cells[cellInd])
+    else
+        word = word >> ((mi.cells[cellInd] - mi.cells[cellInd - 1]) * 2)
+    end
     return MethCall(word & 0x03), (mi, word, cpgInd, cellInd)
 end
 
@@ -101,11 +105,4 @@ end
 for c in df[[1, 2, 3]]
     for m in c[GenomicInterval(...)]
     end
-end
-
-for f in df.cell_names
-    fh = GZip.open("/home/tyranchick/mnt/mnt/raid/sveta/dcm/data/covs/$f")
-    println(f)
-    println(readline(fh))
-    close(fh)
 end
