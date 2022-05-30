@@ -8,6 +8,9 @@ end
 struct GenomicPosition
     chrom :: String
     pos :: UInt32
+    ind :: Int64
+    GenomicPosition(chrom::String, pos::UInt32) = new(chrom, pos)
+    GenomicPosition(chrom::String, pos::UInt32, ind::Int) = new(chrom, pos, ind)
 end
 
 struct GenomicInterval
@@ -113,4 +116,4 @@ function main_simon()
     end
 end
 
-main_simon()
+#main_simon()
