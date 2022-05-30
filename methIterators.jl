@@ -48,7 +48,7 @@ function Base.iterate(mi::MethIteratorCols, state::Int64)
             mi.cpgInd[state]:mi.cpgInd[state],
             1:length(mi.mdf.cell_names),
             mi.chrom,
-            mi.chrPositions[state],
+            [mi.chrPositions[state]],
             true), state + 1
     end
 end
@@ -56,7 +56,7 @@ end
 function Base.iterate(mi::MethIterator)
     #assume rowwise for now
     word = read_word(mi.mdf, mi.cpgInd[1], mi.cells[1])
-    return MethCall(word & 0x03), (mi, word, 1, 1)
+    return (call = MethCall(word & 0x03), cell = mi.cells[1]), (mi, word, 1, 1)
 end
 function Base.iterate(mi::MethIterator, state)
     mi, word, cpgInd, cellInd = state
@@ -70,17 +70,17 @@ function Base.iterate(mi::MethIterator, state)
     end
     #now we need to figure out whether to use the current word or read the new one
     #just read the new word for test purposes
-    if (mi.cells[cellInd] % 16  == 1) | (mi.cells[cellInd] - mi.cells[cellInd - 1] > 15) 
+    if (mi.cells[cellInd] % 16  == 1) | (mi.cells[cellInd] - mi.cells[cellInd - 1] > 15) | (cellInd == 1)
         word = read_word(mi.mdf, mi.cpgInd[cpgInd], mi.cells[cellInd])
     else
         word = word >> ((mi.cells[cellInd] - mi.cells[cellInd - 1]) * 2)
     end
-    return MethCall(word & 0x03), (mi, word, cpgInd, cellInd)
+    return (call = MethCall(word & 0x03), cell = mi.cells[cellInd]), (mi, word, cpgInd, cellInd)
 end
 
 function read_word(mdf::MetDenseFile, cpgInd, cellInd)
     newPosition = mdf.offset_data_block +
-        (cpgInd - 1) * ceil(UInt64, length(mdf.cell_names)/16) * 4 + ceil(UInt64, cellInd/16)
+        (cpgInd - 1) * ceil(UInt64, length(mdf.cell_names)/16) * 4 + floor(UInt64, cellInd/4)
     if position(mdf.f) != newPosition
         seek(mdf.f, newPosition)
     end
@@ -90,14 +90,20 @@ end
 df = MetDenseFile("data/test.metdense")
 pIterator = df[GenomicInterval("2", (3058898, 4050898)), :]
 
-for p in df[GenomicInterval("1", (3823430, 3823431))] #p corresponds to a single position and all cells
-    #println(p)
+for p in df[GenomicInterval("1", (3823430, 3823500))] #p corresponds to a single position and all cells
+    println("Position $(p.chrPositions[1])")
     for m in p #c is a value for a specified cell and position
-        print("$m ")
+        if m.call != nocall
+            println("Cell: $(df.cell_names[m.cell]), call: $(m.call)")
+        end
     end
+    println("\n")
 end
 
-get_interval(df, GenomicInterval("1", (3062977, 3823431)))
+inds, pos = get_interval(df, GenomicInterval("1", (3823430, 3823500)))
+
+MethCall(read_word(df, 2186, 1) & 0x03)
+
 
 for m in df[GenomicInterval("2", (3058898, 4050898)), :]
 end
