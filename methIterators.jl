@@ -1,10 +1,3 @@
-function read_value(mdf::MetDenseFile, cpgInd, cellInd)
-    n = length(mdf.cell_names)
-    seek(mdf.f, mdf.offset_data_block + (cpgInd - 1) * ceil(Int64, n/16) * 4 + ceil(Int64, cellInd/16))
-    word = read(mdf.f, UInt32)
-    return meth .* word .- unmeth .* word
-end
-
 struct MethIterator
     mdf::MetDenseFile
     cpgInd::UnitRange
@@ -31,8 +24,8 @@ end
 function Base.getindex(x::MetDenseFile, cells::Vector{Int})
     return MethIteratorRows()
 end
-function Base.getindex(x::MethDeseFile, gi::Union{Colon, GenomicInterval},
-    cells::Uninon{Colon, Vector{Int}})
+function Base.getindex(x::MetDenseFile, gi::Union{Colon, GenomicInterval},
+    cells::Union{Colon, Vector{Int}})
     #do something with colons
     return MethIterator(x, get_interval(x, gi), cells)
 end
@@ -43,7 +36,7 @@ function Base.iterate(mi::MethIteratorCols)
         mi.cpgInd[1]:mi.cpgInd[1],
         1:length(mi.mdf.cell_names),
         mi.chrom,
-        mi.chrPositions[1],
+        [mi.chrPositions[1]],
         true), 2
 end
 function Base.iterate(mi::MethIteratorCols, state::Int64)
@@ -57,21 +50,50 @@ function Base.iterate(mi::MethIteratorCols, state::Int64)
             mi.chrom,
             mi.chrPositions[state],
             true), state + 1
+    end
 end
 
-function Base.iterate(mi::MethIterator) = read_value(mi.mdf, mi.cpgInd[1], mi.cells[1])
+function Base.iterate(mi::MethIterator)
+    #assume rowwise for now
+    word = read_word(mi.mdf, mi.cpgInd[1], mi.cells[1])
+    return MethCall(word & 0x03), (mi, word, 1, 1)
+end
 function Base.iterate(mi::MethIterator, state)
-
+    mi, word, cpgInd, cellInd = state
+    cellInd += 1
+    if cellInd > length(mi.cells) #go to the next row
+        cpgInd += 1
+        cellInd = mi.cells[1]
+    end
+    if cpgInd > length(mi.cpgInd)
+        return nothing
+    end
+    #now we need to figure out whether to use the current word or read the new one
+    #just read the new word for test purposes
+    word = read_word(mi.mdf, mi.cpgInd[cpgInd], mi.cells[cellInd])
+    return MethCall(word & 0x03), (mi, word, cpgInd, cellInd)
 end
 
+function read_word(mdf::MetDenseFile, cpgInd, cellInd)
+    newPosition = mdf.offset_data_block +
+        (cpgInd - 1) * ceil(UInt64, length(mdf.cell_names)/16) * 4 + ceil(UInt64, cellInd/16)
+    if position(mdf.f) != newPosition
+        seek(mdf.f, newPosition)
+    end
+    return read(mdf.f, UInt32) >> (((cellInd - 1) % 16) * 2)
+end
 
 df = MetDenseFile("data/test.metdense")
 pIterator = df[GenomicInterval("2", (3058898, 4050898)), :]
 
-for p in df[GenomicInterval("2", (3058898, 4050898))] #p corresponds to a single position and all cells
-    for m in p[cells] #c is a value for a specified cell and position
+for p in df[GenomicInterval("1", (3823430, 3823431))] #p corresponds to a single position and all cells
+    #println(p)
+    for m in p #c is a value for a specified cell and position
+        print("$m ")
     end
 end
+
+get_interval(df, GenomicInterval("1", (3062977, 3823431)))
 
 for m in df[GenomicInterval("2", (3058898, 4050898)), :]
 end
@@ -79,4 +101,11 @@ end
 for c in df[[1, 2, 3]]
     for m in c[GenomicInterval(...)]
     end
+end
+
+for f in df.cell_names
+    fh = GZip.open("/home/tyranchick/mnt/mnt/raid/sveta/dcm/data/covs/$f")
+    println(f)
+    println(readline(fh))
+    close(fh)
 end
