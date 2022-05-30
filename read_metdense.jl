@@ -15,10 +15,15 @@ struct GenomicInterval
     iv :: Tuple{UInt32, UInt32}
 end
 
+struct ChromFileposInfo
+    pos ::StepRange{UInt64}  # File positions in Positions Block
+    data ::StepRange{UInt64}  # File positions in Data Block
+end
+
 struct MetDenseFile
     f ::IOStream
     cell_names ::Vector{String}
-    chroms_dict ::Dict{ String, StepRange{UInt64} }
+    chroms_filepos ::Dict{ String, ChromFileposInfo }
     offset_data_block ::UInt64
 end
 
@@ -47,14 +52,27 @@ function MetDenseFile( filename ::String )
     n_chroms = read( f, UInt32 )
     offsets_chroms = [ read( f, UInt64 ) for i in 1:n_chroms ]
     names_chroms = [ readline( f ) for i in 1:n_chroms ]
+    chroms_filepos = Dict{ String, ChromFileposInfo }()
+    start_in_data = offset_data_block
+    rowlength = ceil( UInt64, n_cells / 16 ) * 4 # length of a site in the Data block
+    
+    for i in 1:n_chroms        
 
-    chroms_dict = Dict( names_chroms[i] =>
-        range( offsets_chroms[i],
-            i < n_chroms ? offsets_chroms[i + 1] - 1 : offset_chroms_block - 1;
-            step = UInt64(4))
-        for i = 1:n_chroms )
+        filepos_in_positions_block = 
+            range( offsets_chroms[i],
+                i < n_chroms ? offsets_chroms[i + 1] - 1 : offset_chroms_block - 1;
+                step = UInt64(4) )
+        
+        stop_in_data = start_in_data + rowlength * ( length( filepos_in_positions_block ) - 1 )
+        filepos_in_data_block =
+            range( start_in_data, stop_in_data; step = rowlength )
+        start_in_data = stop_in_data + rowlength
+        
+        chroms_filepos[ names_chroms[i] ] = ChromFileposInfo( 
+            filepos_in_positions_block, filepos_in_data_block )
+    end            
 
-    MetDenseFile( f, names_cells, chroms_dict, offset_data_block )
+    MetDenseFile( f, names_cells, chroms_filepos, offset_data_block )
 end
 
 function read_at_position( f, pos, type )
@@ -64,17 +82,35 @@ end
 
 function get_interval( mdf::MetDenseFile, gi::GenomicInterval )
     start = searchsortedfirst(
-        mdf.chroms_dict[ gi.chrom ], gi.iv[1];
+        mdf.chroms_filepos[ gi.chrom ].pos, gi.iv[1];
         lt = (x, y) -> read_at_position( mdf.f, x, UInt32 ) < y )
     stop = searchsortedlast(
-        mdf.chroms_dict[ gi.chrom ], gi.iv[2];
+        mdf.chroms_filepos[ gi.chrom ].pos, gi.iv[2];
         lt = (x, y) -> x < read_at_position( mdf.f, y, UInt32 ) )
-    seek( mdf.f, mdf.chroms_dict[ gi.chrom ][start])
+    seek( mdf.f, mdf.chroms_filepos[ gi.chrom ].pos[ start ])
     v = Vector{UInt32}( undef, (stop - start + 1) )
     read!( mdf.f, v )
     return start:stop, v
 end
 
+function main_simon()
+    mdf = MetDenseFile("data/gastrulation.metdense")
+    iv, bpps = get_interval( mdf, GenomicInterval( "2", (4200000, 4700000) ))
+    #println( iv )
+    mypos = findfirst( x -> x == 4220582, bpps )
+    println( "Now looking at position 2:", bpps[mypos] )
+    seek( mdf.f, mdf.chroms_filepos["2"].data[ iv[mypos] ] )
+    word = 99
+    for cell in 1:length( mdf.cell_names )
+        if (cell-1) % 16 == 0
+            word = read( mdf.f, UInt32 )
+        end
+        call = MethCall( word & 0x03 )
+        if call != nocall
+            println( "  Cell $cell ($(mdf.cell_names[cell])): $call" )
+        end
+        word >>= 2
+    end
+end
 
-df = MetDenseFile("data/test.metdense")
-int, pos = get_interval( df, GenomicInterval( "2", (3058898, 4050898) ))
+main_simon()
