@@ -73,7 +73,7 @@ function Base.iterate(mi::FixedPositionMethIterator, state::Tuple{UInt32, Int64}
     if length(mi.cells) < ind
         return nothing
     end
-    if mi.cells[ind] ÷ 16 != mi.cells[ind - 1] ÷ 16 
+    if (mi.cells[ind] ÷ 16 != mi.cells[ind - 1] ÷ 16) & (mi.cells[ind] > mi.cells[ind - 1] )
         word = read_word(mi.mdf, mi.position, mi.cells[ind])
     else
         word = word >> ((mi.cells[ind] - mi.cells[ind - 1]) * 2)
