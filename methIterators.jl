@@ -73,7 +73,7 @@ function read_word(mdf::MetDenseFile, gp::GenomicPosition, cellInd)
     return read(mdf.f, UInt32) >> (((cellInd - 1) % 16) * 2)
 end
 
-df = MetDenseFile("data/test.metdense")
+#= df = MetDenseFile("data/test.metdense")
 pIterator = df[GenomicInterval("2", (3058898, 4050898)), :]
 
 for p in df[GenomicInterval("1", (3823430, 3823500))] #p corresponds to a single position and all cells
@@ -98,3 +98,4 @@ for c in df[[1, 2, 3]]
     for m in c[GenomicInterval(...)]
     end
 end
+ =#
