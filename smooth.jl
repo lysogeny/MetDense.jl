@@ -159,16 +159,14 @@ denominators = fill( 0., ( length(posIterator.positions), length(pt_grid) ) )
 
 bw_pt = 2.0
 
-for (i, pos) in enumerate(posIterator)
+for (i, pos) in enumerate(posIterator[.!isnan.(pseudotime)])
     for m in pos
         if m.call != nocall && m.call != ambig 
-            if !isnan( pseudotime[ m.cell ] )
-                weights = tricube.( ( pt_grid .- pseudotime[ m.cell ] ) ./ bw_pt )
-                @assert any( weights .!= 0 )
-                denominators[ i, : ] .+= weights
-                if m.call == meth
-                    numerators[ i, : ] .+= weights
-                end
+            weights = tricube.( ( pt_grid .- pseudotime[m.cell] ) ./ bw_pt )
+            @assert any( weights .!= 0 )
+            denominators[ i, : ] .+= weights
+            if m.call == meth
+                numerators[ i, : ] .+= weights
             end
         end
     end

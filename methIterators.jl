@@ -3,6 +3,19 @@ struct PositionMethIterator
     cpgInds::UnitRange
     chrom::String
     positions::Vector{UInt32}
+    cells::Vector{UInt32}
+    PositionMethIterator(
+        mdf::MetDenseFile,
+        cpgInds::UnitRange,
+        chrom::String,
+        positions::Vector{UInt32}
+    ) = new(mdf, cpgInds, chrom, positions, 1:length(mdf.cell_names))
+    PositionMethIterator(
+        mi::PositionMethIterator, cells::Vector{Int}
+    ) = new(mi.mdf, mi.cpgInds, mi.chrom, mi.positions, cells)
+    PositionMethIterator(
+        mi::PositionMethIterator, cells::BitVector
+    ) = new(mi.mdf, mi.cpgInds, mi.chrom, mi.positions, collect(1:length(mi.mdf.cell_names))[cells])
 end
 struct CellMethIterator
     mdf::MetDenseFile
@@ -28,12 +41,15 @@ end
 function Base.getindex(x::MetDenseFile, cells::Vector{Int})
     return CellMethIterator(x, cells)
 end
+function Base.getindex(mi::PositionMethIterator, cells::Union{Vector{Int}, BitVector})
+    return PositionMethIterator(mi, cells)
+end
 
 function Base.iterate(mi::PositionMethIterator)
     return FixedPositionMethIterator(
         mi.mdf,
         GenomicPosition(mi.chrom, mi.positions[1], mi.cpgInds.start),
-        1:length(mi.mdf.cell_names)
+        mi.cells
         ), 2
 end
 function Base.iterate(mi::PositionMethIterator, state::Int64)
@@ -43,7 +59,7 @@ function Base.iterate(mi::PositionMethIterator, state::Int64)
         return FixedPositionMethIterator(
             mi.mdf,
             GenomicPosition(mi.chrom, mi.positions[state], mi.cpgInds[state]),
-            1:length(mi.mdf.cell_names)
+            mi.cells
         ), state + 1
     end
 end
@@ -76,7 +92,7 @@ end
 #= df = MetDenseFile("data/test.metdense")
 pIterator = df[GenomicInterval("2", (3058898, 4050898)), :]
 
-for p in df[GenomicInterval("1", (3823430, 3823500))] #p corresponds to a single position and all cells
+for p in df[GenomicInterval("1", (3823430, 3823500))][collect(1:length(df.cell_names)) .% 2 .== 0] #p corresponds to a single position and all cells
     println("Position $(p.position.pos)")
     for m in p #c is a value for a specified cell and position
         if m.call != nocall
