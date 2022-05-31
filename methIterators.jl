@@ -73,7 +73,7 @@ function Base.iterate(mi::FixedPositionMethIterator, state::Tuple{UInt32, Int64}
     if length(mi.cells) < ind
         return nothing
     end
-    if (mi.cells[ind] % 16  == 1) | (mi.cells[ind] - mi.cells[ind - 1] > 15)
+    if mi.cells[ind] ÷ 16 != mi.cells[ind - 1] ÷ 16 
         word = read_word(mi.mdf, mi.position, mi.cells[ind])
     else
         word = word >> ((mi.cells[ind] - mi.cells[ind - 1]) * 2)
@@ -92,7 +92,7 @@ end
 #= df = MetDenseFile("data/test.metdense")
 pIterator = df[GenomicInterval("2", (3058898, 4050898)), :]
 
-for p in df[GenomicInterval("1", (3823430, 3823500))][collect(1:length(df.cell_names)) .% 2 .== 0] #p corresponds to a single position and all cells
+for p in df[GenomicInterval("1", (3823430, 3823500))][collect(1:length(df.cell_names)) .% 2 .== 1] #p corresponds to a single position and all cells
     println("Position $(p.position.pos)")
     for m in p #c is a value for a specified cell and position
         if m.call != nocall
