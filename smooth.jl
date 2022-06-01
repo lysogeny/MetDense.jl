@@ -3,40 +3,15 @@
 using Plots
 
 include( "read_metdense.jl" )
-include("methIterators.jl")
+include( "methIterators.jl" )
 
-mdf = MetDenseFile( "/home/tyranchick/mnt/mnt/raid/scbs_datasets/gastrulation/gastrulation.metdense" )
+# Load metdense file
+mdf = MetDenseFile( "data/gastrulation.metdense" )
 
-n_cells = length( mdf.cell_names )
-
+# in interval centered on a randomly picked gene
 iv, bpps = get_interval( mdf, GenomicInterval( "10", ( 61383530 - 50000, 61383530 + 50000 ) ) )
 
-
-seek( mdf.f, mdf.chroms_filepos["10"].data[ iv.start ] )
-n_calls = zeros( length(bpps) )
-n_meth = zeros( length(bpps) )
-for i in 1:length(bpps)
-    word = 99
-    @assert position(mdf.f) == mdf.chroms_filepos["10"].data[ iv.start+i-1 ]
-    for cell in 1:length( mdf.cell_names )
-        if (cell-1) % 16 == 0
-            word = read( mdf.f, UInt32 )
-        end
-        call = MethCall( word & 0x03 )
-        if call != nocall && call != ambig 
-            n_calls[i] += 1
-            if call == meth
-                n_meth[i] += 1
-            end
-        end
-        word >>= 2
-    end
-    n_calls / n_meth
-end
-
-scatter( bpps, n_meth ./ n_calls )
-
-
+# smoothing kernel
 function tricube(x)
     if abs(x) < 1
         ( 1 - abs(x)^3 )^3
@@ -45,7 +20,7 @@ function tricube(x)
     end
 end
 
-
+# Load table assigning pseudotimes to cells
 pseudotime = fill( NaN, length(mdf.cell_names) )
 fpt = open( "data/DPT_to_mesoderm.csv" )
 readline( fpt )
@@ -59,15 +34,19 @@ while !eof( fpt )
     end
 end
 
+
+# A grid of time points, and a bandwidth
 pt_grid = range( minimum( filter( x -> !isnan(x), pseudotime ) ), maximum( filter( x -> !isnan(x), pseudotime ) ), length=100 )
+bw_pt = 2.0
+
+# Smoothing across cells
 
 numerators = fill( 0., ( length(bpps), length(pt_grid) ) )
 denominators = fill( 0., ( length(bpps), length(pt_grid) ) )
 
-bw_pt = 2.0
 seek( mdf.f, mdf.chroms_filepos["10"].data[ iv.start ] )
 for i in 1:length(bpps)
-    word = 99
+    word = 99   # arbitrary, will be overwritten
     @assert position(mdf.f) == mdf.chroms_filepos["10"].data[ iv.start+i-1 ]
     for cell in 1:length( mdf.cell_names )
         if (cell-1) % 16 == 0
@@ -89,75 +68,16 @@ for i in 1:length(bpps)
     end
 end
 
+# Heatmap, smoothed only in time direction
 heatmap( bpps, pt_grid, transpose( numerators ./ denominators ) )
 
 
-bppos_grid = range( minimum(bpps), maximum(bpps), length=300 )
-bw_pos = 800
-numerators2 = fill( 0., ( length(bppos_grid), length(pt_grid) ) )
-denominators2 = fill( 0., ( length(bppos_grid), length(pt_grid) ) )
-for i in 1:length(bpps)
-    weights = tricube.( ( bppos_grid .- Float64(bpps[i]) ) ./ bw_pos )
-    for j in 1:length(bppos_grid)
-        if weights[j] > 0
-            numerators2[j,:] .+= numerators[ i, : ] * weights[j]
-            denominators2[j,:] .+= denominators[ i, : ] * weights[j]
-        end
-    end
-end
+# The same smoothing, now using methIterators
 
-heatmap( bppos_grid, pt_grid, transpose( numerators2 ./ denominators2 ) )
-
-#same but with methIterators
-n_cells = length( mdf.cell_names )
 posIterator = mdf[GenomicInterval( "10", ( 61383530 - 50000, 61383530 + 50000 ) )]
-n_calls = zeros( length(posIterator.positions) )
-n_meth = zeros( length(posIterator.positions) )
-
-for (i, pos) in enumerate(posIterator) 
-    for m in pos
-        if m.call != nocall && m.call != ambig 
-            n_calls[i] += 1
-            if m.call == meth
-                n_meth[i] += 1
-            end
-        end
-    end
-end
-
-scatter( posIterator.positions, n_meth ./ n_calls )
-
-function tricube(x)
-    if abs(x) < 1
-        ( 1 - abs(x)^3 )^3
-    else
-        0
-    end
-end
-
-
-pseudotime = fill( NaN, n_cells )
-fpt = open( "data/DPT_to_mesoderm.csv" )
-readline( fpt )
-while !eof( fpt )
-    fields = split( readline( fpt ), "," )
-    if fields[2] != "NA"
-        cellidx = findfirst( isequal(fields[1]), mdf.cell_names )
-        if !isnothing( cellidx )
-            pseudotime[ cellidx ] = parse( Float32, fields[2] )
-        end
-    end
-end
-
-pt_grid = range( 
-    minimum( filter( x -> !isnan(x), pseudotime ) ), 
-    maximum( filter( x -> !isnan(x), pseudotime ) ), 
-    length = 100 )
 
 numerators = fill( 0., ( length(posIterator.positions), length(pt_grid) ) )
 denominators = fill( 0., ( length(posIterator.positions), length(pt_grid) ) )
-
-bw_pt = 2.0
 
 for (i, pos) in enumerate(posIterator[.!isnan.(pseudotime)])
     for m in pos
@@ -172,14 +92,18 @@ for (i, pos) in enumerate(posIterator[.!isnan.(pseudotime)])
     end
 end
 
-heatmap( posIterator.positions, pt_grid, transpose( numerators ./ denominators ) )
+heatmap( bpps, pt_grid, transpose( numerators ./ denominators ) )
 
-bppos_grid = range( minimum(posIterator.positions), maximum(posIterator.positions), length=300 )
+
+# A grid of positions, and a smoothing bandwidth
+bppos_grid = range( minimum(bpps), maximum(bpps), length=300 )
 bw_pos = 800
+
+# Now smoothing across position
 numerators2 = fill( 0., ( length(bppos_grid), length(pt_grid) ) )
 denominators2 = fill( 0., ( length(bppos_grid), length(pt_grid) ) )
-for i in 1:length(posIterator.positions)
-    weights = tricube.( ( bppos_grid .- Float64(posIterator.positions[i]) ) ./ bw_pos )
+for i in 1:length(bpps)
+    weights = tricube.( ( bppos_grid .- Float64(bpps[i]) ) ./ bw_pos )
     for j in 1:length(bppos_grid)
         if weights[j] > 0
             numerators2[j,:] .+= numerators[ i, : ] * weights[j]
@@ -188,4 +112,6 @@ for i in 1:length(posIterator.positions)
     end
 end
 
+# New heatmap
 heatmap( bppos_grid, pt_grid, transpose( numerators2 ./ denominators2 ) )
+
