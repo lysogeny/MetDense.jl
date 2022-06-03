@@ -1,5 +1,4 @@
 using Pipe
-using Profile
 
 include("read_metdense.jl")
 include("methIterators.jl")
@@ -9,9 +8,9 @@ files = readdir(genome_dir)
 genome_dict = Dict(map(x -> split(x, ".")[end - 1], files) .=> (genome_dir .* files))
 genome_dict["__other"] = genome_dict["nonchromosomal"]
 
-strandStep = UInt32(2)
-input = "data/dcm.metdense"
-output = "data/dcm_collapsed.metdense"
+strandStep = UInt32(1)
+input = "/home/tyranchick/mnt/mnt/raid/sveta/dcm/data/dcm_cpg.metdense"
+output = "/home/tyranchick/mnt/mnt/raid/sveta/dcm/data/dcm_cpg_collapsed.metdense"
 tempfile = "data/temp.metdense"
 
 function find_chrom(name, genome_dict)
@@ -40,6 +39,7 @@ function write_line(pos::UInt32, data, fout, fout_tmp)
 end
 
 function write_chrom(name, df, fout, fout_tmp, genome_dict, strandStep::UInt32, input)    
+    filepos = position(fout_tmp)
     genome = find_chrom(name, genome_dict)
     genome_starts = UInt32(position(genome))
 
@@ -57,7 +57,7 @@ function write_chrom(name, df, fout, fout_tmp, genome_dict, strandStep::UInt32, 
     G_data = Vector{UInt8}(undef, df.chroms_filepos[name].data.step)
 
     while i < length(df.chroms_filepos[name].data)
-    #while i < 1000
+    #while i < 5
         if !skip
             bpPos = read(posInput, UInt32)
             read!(df.f, C_data)
@@ -66,7 +66,7 @@ function write_chrom(name, df, fout, fout_tmp, genome_dict, strandStep::UInt32, 
         end
         seek(genome, genome_starts + (bpPos - 1) + (bpPos - 1) ÷ 60)
         nct = read(genome, Char)
-
+        #println("$nct $bpPos")
         if nct == 'C'
             nextBp = read(posInput, UInt32)
             read!(df.f, G_data)
@@ -76,6 +76,7 @@ function write_chrom(name, df, fout, fout_tmp, genome_dict, strandStep::UInt32, 
                 collapsed += 1
                 i += 1
             else
+                write_line(bpPos, C_data, fout, fout_tmp)
                 bpPos = nextBp
                 C_data .= G_data
                 skip = true
@@ -97,7 +98,7 @@ function write_chrom(name, df, fout, fout_tmp, genome_dict, strandStep::UInt32, 
     close(genome)
     close(posInput)
 
-    return (name = name, filepos = position(fout_tmp))
+    return (name = name, filepos = filepos)
 end
 
 df = MetDenseFile(input)
