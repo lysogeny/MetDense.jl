@@ -9,9 +9,9 @@ struct GenomicPosition
     chrom :: String
     pos :: UInt32
     ind :: Int64
-    GenomicPosition(chrom::String, pos::UInt32) = new(chrom, pos)
-    GenomicPosition(chrom::String, pos::UInt32, ind::Int) = new(chrom, pos, ind)
 end
+GenomicPosition(chrom::String, pos::Int) = GenomicPosition(chrom, UInt32(pos), -1)
+
 
 struct GenomicInterval
     chrom :: String
@@ -94,6 +94,20 @@ function get_interval( mdf::MetDenseFile, gi::GenomicInterval )
     v = Vector{UInt32}( undef, (stop - start + 1) )
     read!( mdf.f, v )
     return start:stop, v
+end
+
+# ok, this should be somehow reorganized not to keep file-related info and more general stuff together
+function get_position(mdf::MetDenseFile, gp::GenomicPosition)
+    if gp.ind !== -1
+        return gp
+    end
+    ind, p = get_interval(mdf, GenomicInterval(gp.chrom, (gp.pos, gp.pos)))
+    if length(p) == 0
+        return nothing
+    end
+    @assert gp.pos == p[1]
+    println(ind)
+    return GenomicPosition(gp.chrom, gp.pos, ind[1])
 end
 
 function main_simon()

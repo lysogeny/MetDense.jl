@@ -85,3 +85,14 @@ for (name, chr) in collapsed_df.chroms_filepos
     print("$notFound positions are missing\n")    
 end
 println("Check for $nonzero chromosomes failed")
+
+int_col = get_interval(collapsed_df, GenomicInterval("3", (1, 4000000)))
+int_orit = get_interval(orig_df, GenomicInterval("3", (1, 4000000)))
+
+gp = get_position(collapsed_df, GenomicPosition("3", 3000042))
+
+for m in orig_df[GenomicPosition("3", 3000042)]
+    print("$(m.call) ")
+end
+
+get_interval(collapsed_df, GenomicInterval("3", (3000042, 3000042)))

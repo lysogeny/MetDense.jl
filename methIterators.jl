@@ -38,6 +38,9 @@ function Base.getindex(x::MetDenseFile, gi::GenomicInterval)
     cpgInds, pos = get_interval(x, gi)
     return PositionMethIterator(x, cpgInds, gi.chrom, pos)
 end
+function Base.getindex(x::MetDenseFile, gp::GenomicPosition)
+    return FixedPositionMethIterator(x, get_position(x, gp), 1:length(x.cell_names))
+end
 function Base.getindex(x::MetDenseFile, cells::Vector{Int})
     return CellMethIterator(x, cells)
 end
