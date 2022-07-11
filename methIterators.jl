@@ -83,6 +83,9 @@ function Base.iterate(mi::FixedPositionMethIterator, state::Tuple{UInt32, Int64}
     end
     return (call = MethCall(word & 0x03), cell = mi.cells[ind]), (word, ind + 1)
 end
+function Base.length(mi::FixedPositionMethIterator)
+    return length(mi.cells)
+end
 
 function read_word(mdf::MetDenseFile, gp::GenomicPosition, cellInd)
     newPosition = mdf.chroms_filepos[gp.chrom].data[gp.ind] + floor(UInt64, cellInd/4)
