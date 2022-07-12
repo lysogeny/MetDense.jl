@@ -213,7 +213,7 @@ end
 
 function make_methrec_channel( fin, data_cols, round )
     f = function(ch::Channel)
-        while !eof( fin )
+        while !eof( fin ) 
             put!( ch, line_to_methrec( readline( fin ), data_cols, round ) )
         end
     end
@@ -251,7 +251,7 @@ function main(methcalls_dir::String, output::String, data_cols::DataCols;
     methcalls_filenames = @pipe readdir( methcalls_dir ) |>
             filter(x -> occursin(Regex(file_end * "\$"), x), _)
     cellnames = replace.( methcalls_filenames, file_end => "")
-    
+
     fins = GZip.open.( methcalls_dir * "/" .* methcalls_filenames )
     if(skip_header)
         readline.( fins )  # Skip header
@@ -262,8 +262,9 @@ function main(methcalls_dir::String, output::String, data_cols::DataCols;
 end
 
 main(
-    "/home/tyranchick/mnt/mnt/raid/sveta/dcm/data/covs", 
-    "test.metdense", 
-    DataCols(1, 2, 5, 6), 
-    file_end = "-DCM.cov.gz", 
-    skip_header = false)
+    "/home/tyranchick/mnt/mnt/raid/dcm_mouse/sveta/test_bisquit/calls", 
+    "/home/tyranchick/mnt/mnt/raid/dcm_mouse/sveta/test_bisquit/dcm.metdense", 
+    DataCols(1, 2, 6, 7), 
+    file_end = ".calls.tsv.gz", 
+    skip_header = false,
+    round = "ceil")

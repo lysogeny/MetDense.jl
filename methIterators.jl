@@ -49,11 +49,15 @@ function Base.getindex(mi::PositionMethIterator, cells::Union{Vector{Int}, BitVe
 end
 
 function Base.iterate(mi::PositionMethIterator)
-    return FixedPositionMethIterator(
-        mi.mdf,
-        GenomicPosition(mi.chrom, mi.positions[1], mi.cpgInds.start),
-        mi.cells
-        ), 2
+    if length(mi.positions) == 0
+        return nothing
+    else 
+        return FixedPositionMethIterator(
+            mi.mdf,
+            GenomicPosition(mi.chrom, mi.positions[1], mi.cpgInds.start),
+            mi.cells
+            ), 2
+    end
 end
 function Base.iterate(mi::PositionMethIterator, state::Int64)
     if length(mi.positions) < state
