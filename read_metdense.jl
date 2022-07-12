@@ -90,10 +90,14 @@ function get_interval( mdf::MetDenseFile, gi::GenomicInterval )
     stop = searchsortedlast(
         mdf.chroms_filepos[ gi.chrom ].pos, gi.iv[2];
         lt = (x, y) -> x < read_at_position( mdf.f, y, UInt32 ) )
-    seek( mdf.f, mdf.chroms_filepos[ gi.chrom ].pos[ start ])
-    v = Vector{UInt32}( undef, (stop - start + 1) )
-    read!( mdf.f, v )
-    return start:stop, v
+    if start > length(mdf.chroms_filepos[ gi.chrom ].pos)
+        return start:stop, Vector{UInt32}(undef, 0)
+    else
+        seek( mdf.f, mdf.chroms_filepos[ gi.chrom ].pos[ start ])
+        v = Vector{UInt32}( undef, (stop - start + 1) )
+        read!( mdf.f, v )
+        return start:stop, v
+    end
 end
 
 # ok, this should be somehow reorganized not to keep file-related info and more general stuff together
