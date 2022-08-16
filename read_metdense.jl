@@ -84,6 +84,9 @@ function read_at_position( f, pos, type )
 end
 
 function get_interval( mdf::MetDenseFile, gi::GenomicInterval )
+    if !haskey(mdf.chroms_filepos, gi.chrom)
+        return 1:0, Vector{UInt32}(undef, 0)
+    end
     start = searchsortedfirst(
         mdf.chroms_filepos[ gi.chrom ].pos, gi.iv[1];
         lt = (x, y) -> read_at_position( mdf.f, x, UInt32 ) < y )
