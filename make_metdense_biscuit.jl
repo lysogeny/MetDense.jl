@@ -215,8 +215,7 @@ function make_methrec_channel( fin, data_cols, round )
     f = function(ch::Channel)
         while !eof( fin )
             fields = split( readline( fin ), "\t" )
-            cont = fields[data_cols.context]
-            if cont[2] == 'G' || cont[4] == 'G'
+            if lenght(fields) > 1 && (fields[data_cols.context][2] == 'G' || fields[data_cols.context][4] == 'G')
                 continue
             end
             put!( ch, line_to_methrec( fields, data_cols, round ) )
@@ -268,7 +267,7 @@ end
 
 main(
     "/home/tyranchick/mnt/mnt/raid/dcm_mouse/data/genome/02_calls/pileup/tp0/", 
-    "/home/tyranchick/mnt/mnt/raid/dcm_mouse/data/genome/metdense/tp0/CH.metdense", 
+    "/home/tyranchick/mnt/mnt/raid/dcm_mouse/data/genome/metdense/tp0/CH_new.metdense", 
     DataCols(1, 2, 8, 9, 7), 
     file_end = ".bed.gz", 
     skip_header = false,

@@ -262,9 +262,9 @@ function main(methcalls_dir::String, output::String, data_cols::DataCols;
 end
 
 main(
-    "/home/tyranchick/mnt/mnt/raid/dcm_mouse/sveta/test_bisquit/calls", 
-    "/home/tyranchick/mnt/mnt/raid/dcm_mouse/sveta/test_bisquit/dcm.metdense", 
-    DataCols(1, 2, 6, 7), 
-    file_end = ".calls.tsv.gz", 
+    "/home/tyranchick/mnt/mnt/raid/dcm_mouse/data/genome/02_calls/biscuit/tp0", 
+    "/home/tyranchick/mnt/mnt/raid/dcm_mouse/data/genome/metdense/tp0/biscuit.metdense", 
+    DataCols(1, 2, 7, 6), 
+    file_end = ".tsv.gz", 
     skip_header = false,
     round = "ceil")
