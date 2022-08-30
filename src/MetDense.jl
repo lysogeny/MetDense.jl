@@ -1,9 +1,10 @@
 module MetDense
 
+include("positions.jl")
 include("read_metdense.jl")
 include("iterators.jl")
 include("make_metdense.jl")
 
-export MetDenseFile, get_interval, seek, MethCall
+export MetDenseFile, get_interval, MethCall
 
 end # module

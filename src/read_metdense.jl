@@ -5,32 +5,6 @@
     ambig = 0x03
 end
 
-struct GenomicPosition
-    chrom :: String
-    pos :: UInt32
-    ind :: Int64
-end
-GenomicPosition(chrom::String, pos::Int) = GenomicPosition(chrom, UInt32(pos), -1)
-
-
-struct GenomicInterval
-    chrom :: String
-    iv :: Tuple{UInt32, UInt32}
-end
-
-function extend(gi::GenomicInterval; left = 0, right = 0)
-    if Int64(gi.iv[2]) - Int64(gi.iv[1]) - left + right <= 0
-        @warn "The resulting interval length is smaller than zero"
-        return gi
-    end
-
-    if gi.iv[1] - left <= 0
-        left = gi.iv[1] - 1
-    end
-
-    return GenomicInterval(gi.chrom, (gi.iv[1] - left, gi.iv[2] + right))
-end
-
 struct ChromFileposInfo
     pos ::StepRange{UInt64}  # File positions in Positions Block
     data ::StepRange{UInt64}  # File positions in Data Block
