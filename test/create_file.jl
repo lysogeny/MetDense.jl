@@ -27,11 +27,23 @@ function channel_function(td::TestData)
     Channel(content)
 end
 
+data = TestData(["1", "11", "2", "3", "5", "MT", "X"], 100)
+
 @testset "Write single-celled file" begin
-    data = TestData(["1", "11", "2", "3", "5", "MT", "X"], 100)
-    fname = tempname()
+    fname = tempname(cleanup=true)
     make_metdense_file(fname, [channel_function(data)], ["AS-hello-LR-world"])
     @test isfile(fname)
     file = MetDenseFile(fname)
     @test file.cell_names == ["AS-hello-LR-world"]
+end
+
+@testset "Iterators" begin
+    fname = tempname(cleanup=true)
+    make_metdense_file(fname, [channel_function(data)], ["AS-hello-LR-world"])
+    file = MetDenseFile(fname)
+    gi = MetDense.GenomicInterval("1", (1, 3000))
+    for entry in file[gi]
+        # IDK?!
+        break
+    end
 end
