@@ -1,19 +1,3 @@
-struct EOFMarker
-end
-
-GenomicPositionOrEOF = Union{ GenomicPosition, EOFMarker }
-
-function Base.isless( gp1 ::GenomicPosition, gp2 ::GenomicPosition )
-    if gp1.chrom == gp2.chrom
-        gp1.pos < gp2.pos
-    else
-        gp1.chrom < gp2.chrom
-    end
-end
-
-Base.isless( gp1 ::EOFMarker, gp2 ::GenomicPositionOrEOF ) = false
-Base.isless( gp1 ::GenomicPosition, gp2 ::EOFMarker ) = true
-
 struct MethRecord
     gpos :: GenomicPositionOrEOF
     call :: MethCall
@@ -151,7 +135,7 @@ function write_chromosomes_block( fout, chroms, start_positions_block )
     end
 end
 
-function make_metdense_file( outfilename, inputs::Channel, cellnames )
+function make_metdense_file( outfilename, inputs, cellnames )
     fout = open( outfilename, "w" )
     temp_filename = outfilename * ".tmp"
 

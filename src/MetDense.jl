@@ -5,6 +5,9 @@ include("read_metdense.jl")
 include("iterators.jl")
 include("make_metdense.jl")
 
-export MetDenseFile, get_interval, MethCall
+export MetDenseFile, 
+    get_interval, 
+    MethCall, 
+    make_metdense_file
 
 end # module

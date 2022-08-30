@@ -5,6 +5,22 @@ struct GenomicPosition
 end
 GenomicPosition(chrom::String, pos::Int) = GenomicPosition(chrom, UInt32(pos), -1)
 
+function Base.isless( gp1 ::GenomicPosition, gp2 ::GenomicPosition )
+    if gp1.chrom == gp2.chrom
+        gp1.pos < gp2.pos
+    else
+        gp1.chrom < gp2.chrom
+    end
+end
+
+struct EOFMarker
+end
+
+GenomicPositionOrEOF = Union{ GenomicPosition, EOFMarker }
+
+
+Base.isless( gp1 ::EOFMarker, gp2 ::GenomicPositionOrEOF ) = false
+Base.isless( gp1 ::GenomicPosition, gp2 ::EOFMarker ) = true
 
 struct GenomicInterval
     chrom :: String
