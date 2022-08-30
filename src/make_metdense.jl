@@ -1,25 +1,3 @@
-import GZip
-import Pipe: @pipe
-
-@enum MethCall ::UInt32 begin
-    nocall = 0x00
-    unmeth = 0x01
-    meth = 0x02
-    ambig = 0x03
-end
-
-struct GenomicPosition
-    chrom :: String
-    pos :: UInt32
-end
-
-struct DataCols
-    chrom::Int16
-    pos::Int16
-    meth::Int16
-    unmeth::Int16
-end
-
 struct EOFMarker
 end
 
@@ -39,44 +17,6 @@ Base.isless( gp1 ::GenomicPosition, gp2 ::EOFMarker ) = true
 struct MethRecord
     gpos :: GenomicPositionOrEOF
     call :: MethCall
-end
-
-function line_to_methrec( line, data_cols, round )
-    if line == ""
-        return MethRecord( EOFMarker(), nocall )
-    end
-    fields = split( line, "\t" )
-    gp = GenomicPosition( fields[data_cols.chrom], parse( UInt32, fields[data_cols.pos] ) )
-    count_meth = parse( Int, fields[data_cols.meth] )
-    count_unmeth = parse( Int, fields[data_cols.unmeth] )
-    if count_meth == 0
-        if count_unmeth == 0
-            call = nocall
-        else
-            call = unmeth
-        end
-    else # count_meth > 0
-        if count_unmeth == 0
-            call = meth
-        else
-            if round == "floor"
-                call = unmeth
-            elseif round == "ceil"
-                call = meth
-            elseif round == "round"
-                if count_meth > count_unmeth 
-                    call = meth
-                elseif count_meth < count_unmeth
-                    call = unmeth
-                else
-                    call = ambig
-                end
-            else
-                call = ambig
-            end
-        end
-    end
-    MethRecord( gp, call )
 end
 
 const data_block_pos_offset = 16
@@ -211,16 +151,7 @@ function write_chromosomes_block( fout, chroms, start_positions_block )
     end
 end
 
-function make_methrec_channel( fin, data_cols, round )
-    f = function(ch::Channel)
-        while !eof( fin ) 
-            put!( ch, line_to_methrec( readline( fin ), data_cols, round ) )
-        end
-    end
-    Channel( f )
-end
-
-function make_metdense_file( outfilename, inputs, cellnames )
+function make_metdense_file( outfilename, inputs::Channel, cellnames )
     fout = open( outfilename, "w" )
     temp_filename = outfilename * ".tmp"
 
@@ -239,32 +170,3 @@ function make_metdense_file( outfilename, inputs, cellnames )
     close( fout )
 end
 
-function main(methcalls_dir::String, output::String, data_cols::DataCols; 
-    file_end = "", skip_header = true, round = "none")
-    # data_cols specifies the position of columns
-    # 1 - chromosome
-    # 2 - position
-    # 3 - number of methylated reads
-    # 4 - number of unmethylated reads
-    # round can be "none", "floor", "ceil", "round"
-
-    methcalls_filenames = @pipe readdir( methcalls_dir ) |>
-            filter(x -> occursin(Regex(file_end * "\$"), x), _)
-    cellnames = replace.( methcalls_filenames, file_end => "")
-
-    fins = GZip.open.( methcalls_dir * "/" .* methcalls_filenames )
-    if(skip_header)
-        readline.( fins )  # Skip header
-    end
-    inputs = make_methrec_channel.( fins, Ref(data_cols), Ref(round) )
-
-    make_metdense_file( output, inputs, cellnames )
-end
-
-main(
-    "/home/tyranchick/mnt/mnt/raid/dcm_mouse/data/genome/02_calls/biscuit/tp0", 
-    "/home/tyranchick/mnt/mnt/raid/dcm_mouse/data/genome/metdense/tp0/biscuit.metdense", 
-    DataCols(1, 2, 7, 6), 
-    file_end = ".tsv.gz", 
-    skip_header = false,
-    round = "ceil")
