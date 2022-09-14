@@ -8,6 +8,8 @@ include("make_metdense.jl")
 export MetDenseFile, 
     get_interval, 
     MethCall, 
-    make_metdense_file
+    make_metdense_file,
+    extend,
+    GenomicInterval
 
 end # module

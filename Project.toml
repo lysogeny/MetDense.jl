@@ -1,7 +1,7 @@
 name = "MetDense"
 uuid = "080924a2-e511-4f79-8619-ab247d4e2c2c"
 authors = ["Svetlana Ovchinnikova", "Simon Anders", "Jooa <code@jooa.xyz>"]
-version = "0.1.0"
+version = "0.1.1"
 
 [deps]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"

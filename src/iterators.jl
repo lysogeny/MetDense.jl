@@ -50,6 +50,19 @@ function Base.getindex(x::MetDenseFile, cells::Vector{Int})
     return CellMethIterator(x, cells)
 end
 
+function Base.getindex(x::MetDenseFile, chr::String)
+    if !haskey(x.chroms_filepos, chr)
+        error("There in no chromosome $chr in the MetDense file")
+    end
+
+    seek(x.f, x.chroms_filepos[chr].pos[1])
+    first = read(x.f, UInt32)
+    seek(x.f, x.chroms_filepos[chr].pos[end])
+    last = read(x.f, UInt32)
+
+    return x[GenomicInterval(chr, (first, last))]
+end
+
 function Base.getindex(mi::PositionMethIterator, cells::Union{Vector{Int}, BitVector})
     return PositionMethIterator(mi, cells)
 end
